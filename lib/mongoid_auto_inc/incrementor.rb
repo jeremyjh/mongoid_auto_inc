@@ -44,12 +44,12 @@ module MongoidAutoInc
     end
 
     def sequence_name
-      val = "#{@object.class.name.downcase}_#{@name}"
+      scope_val = ''
       if @scope
-        scope_val = @object.read_attribute(@scope.to_sym)
-        val = "#{val}_#{scope_val}" if scope_val && scope_val.to_s.present?
+        scope_val = @object.read_attribute(@scope.to_sym) || ''
+        scope_val = "_#{scope_val}" if scope_val.present?
       end
-      val
+      val = "#{@object.class.name.downcase}#{scope_val}_#{@name}"
     end
   end
 end
