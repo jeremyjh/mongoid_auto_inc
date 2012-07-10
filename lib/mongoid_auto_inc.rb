@@ -5,12 +5,13 @@ module MongoidAutoInc
   extend ActiveSupport::Concern
 
   module ClassMethods
-    def auto_increment(name, options={})
+    def auto_increment(name, options={ })
       field name, :type => Integer
-      seq_name = "#{self.name.downcase}_#{name}"
-      incrementor = MongoidAutoInc::Incrementor.new(options) 
 
-      before_create { self.send("#{name}=", incrementor[seq_name].inc) unless self[name.to_sym].present? }
+      before_create do
+        val = MongoidAutoInc::Incrementor.new(name, options.merge(object: self)).inc
+        self.send("#{name}=", val) unless self[name.to_sym].present?
+      end
     end
   end
 end

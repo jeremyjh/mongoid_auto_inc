@@ -2,79 +2,54 @@
 #   http://ihswebdesign.com/blog/autoincrement-in-mongodb-with-ruby/
 module MongoidAutoInc
   class Incrementor
-    class Sequence
-      def initialize(sequence, collection_name, seed)
-        @sequence = sequence.to_s
-        @collection = collection_name.to_s
-        exists? || create(seed)
-      end
 
-      def inc
-        update_number_with("$inc" => { "number" => 1 })
-      end
-
-      def set(number)
-        update_number_with("$set" => { "number" => number })
-      end
-
-      private
-
-      def exists?
-        collection.find(query).count > 0
-      end
-
-      def create(number = 0)
-        collection.insert(query.merge({ "number" => number }))
-      end
-
-      def collection
-        if ::Mongoid::VERSION < '3'
-          Mongoid.database[@collection]
-        else
-          Mongoid.default_session[@collection]
-        end
-      end
-
-      def query
-        { "seq_name" => @sequence }
-      end
-
-      def current
-        if ::Mongoid::VERSION < '3'
-          collection.find_one(query)["number"]
-        else
-          collection.find(query).one['number']
-        end
-      end
-
-      def update_number_with(mongo_func)
-        opts = {
-          "query"  => query,
-          "update" => mongo_func,
-          "new"    => true # return the modified document
-        }
-        if ::Mongoid::VERSION < '3'
-          collection.find_and_modify(opts)["number"]
-        else
-          collection.database.command({
-            findandmodify: collection.name
-          }.merge(opts))['value']['number']
-        end
-      end
+    def initialize(name, options=nil)
+      options     ||= { }
+      @name       = name
+      @collection = options[:collection] || "__sequences"
+      @object     = options[:object]
+      @scope      = options[:scope]
+      exists? || create(options[:seed].to_i)
     end
 
-    def initialize(options=nil)
-      options ||= {}
-      @collection = options[:collection] || "sequences"
-      @seed = options[:seed].to_i
+    def inc
+      update_number_with("$inc" => { seq: 1 })
     end
 
-    def [](sequence)
-      Sequence.new(sequence, @collection, @seed)
+    def set(number)
+      update_number_with("$set" => { seq: number })
     end
 
-    def []=(sequence, number)
-      Sequence.new(sequence, @collection, @seed).set(number)
+    private
+
+    def exists?
+      collection.find(query).count > 0
+    end
+
+    def create(number = 0)
+      collection.insert(query.merge({ seq: number }))
+    end
+
+    def collection
+      Mongoid.default_session[@collection]
+    end
+
+    def query
+      { _id: sequence_name }
+    end
+
+    def update_number_with(mongo_func)
+      inc = collection.where(_id: sequence_name).modify(mongo_func, upsert: true, new: true)
+      inc['seq']
+    end
+
+    def sequence_name
+      val = "#{@object.class.name.downcase}_#{@name}"
+      if @scope
+        scope_val = @object.read_attribute(@scope.to_sym)
+        val = "#{val}_#{scope_val}" if scope_val && scope_val.to_s.present?
+      end
+      val
     end
   end
 end

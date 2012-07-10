@@ -5,8 +5,12 @@ Bundler.require(:default, :development)
 require 'mongoid_auto_inc'
 
 describe MongoidAutoInc do
+
   before(:all) do
-    Mongoid.master = Mongo::Connection.new.db("mongoid_auto_inc_test")
+    Mongoid.configure do |config|
+      config.sessions = { default: { hosts: [ "127.0.0.1:27017" ], database: 'mongoid_auto_inc_test'}}
+      config.connect_to("mongoid_auto_inc_test")
+    end
   end
 
   describe "auto increment" do
@@ -18,7 +22,7 @@ describe MongoidAutoInc do
     end
 
     before(:each) do
-      Mongoid.database["sequences"].remove
+      Mongoid.default_session["__sequences"].drop
     end
 
     it "should be nil" do
@@ -33,7 +37,7 @@ describe MongoidAutoInc do
       DocumentA.create!
       DocumentA.create!.seq.should == 2
     end
-    
+
     it "should not auto increment when value is provided" do
       doc = DocumentA.create!(seq: 33)
       doc.seq.should == 33
@@ -49,16 +53,16 @@ describe MongoidAutoInc do
     end
 
     before(:each) do
-      Mongoid.database["sequences"].remove
-      Mongoid.database["other_sequences"].remove
+      Mongoid.default_session["__sequences"].drop
+      Mongoid.default_session["other_sequences"].drop
     end
 
     it "should store sequence data to other_sequences collection" do
       DocumentB.create!.seq.should == 1
       DocumentB.create!.seq.should == 2
-      Mongoid.database["sequences"].remove
+      Mongoid.default_session["__sequences"].drop
       DocumentB.create!.seq.should == 3
-      Mongoid.database["other_sequences"].remove
+      Mongoid.default_session["other_sequences"].drop
       DocumentB.create!.seq.should == 1
     end
   end
@@ -76,7 +80,7 @@ describe MongoidAutoInc do
     end
 
     before(:each) do
-      Mongoid.database["sequences"].remove
+      Mongoid.default_session["__sequences"].drop
     end
 
     it "should start with 11 (10 + 1)" do
@@ -85,6 +89,32 @@ describe MongoidAutoInc do
       DocumentC.create!.seq.should == 13
       DocumentD.create!.seq.should == 1
       DocumentD.create!.seq.should == 2
+    end
+  end
+
+  describe "auto increment with scope option" do
+    before(:all) do
+      class DocumentE
+        include Mongoid::Document
+
+        field :tenant_id
+        auto_increment :seq, scope: :tenant_id
+      end
+    end
+
+    before(:each) do
+      Mongoid.default_session["__sequences"].drop
+    end
+
+    it "should increment scoped sequences independently" do
+      e = DocumentE.create!(tenant_id: 1)
+      e.seq.should == 1
+      DocumentE.create!(tenant_id: 1).seq.should == 2
+
+      DocumentE.create!(tenant_id: 2).seq.should == 1
+      DocumentE.create!(tenant_id: 2).seq.should == 2
+
+      DocumentE.create!(tenant_id: 1).seq.should == 3
     end
   end
 end
