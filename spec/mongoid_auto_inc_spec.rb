@@ -2,6 +2,7 @@
 # rspec spec/mongoid_auto_inc_spec.rb
 require 'bundler/setup'
 Bundler.require(:default, :development)
+require 'mongoid'
 require 'mongoid_auto_inc'
 
 describe MongoidAutoInc do
@@ -17,6 +18,8 @@ describe MongoidAutoInc do
     before(:all) do
       class DocumentA
         include Mongoid::Document
+        include Mongoid::AutoInc
+
         auto_increment :seq
       end
     end
@@ -48,6 +51,8 @@ describe MongoidAutoInc do
     before(:all) do
       class DocumentB
         include Mongoid::Document
+        include Mongoid::AutoInc
+
         auto_increment :seq, :collection => 'other_sequences'
       end
     end
@@ -71,10 +76,14 @@ describe MongoidAutoInc do
     before(:all) do
       class DocumentC
         include Mongoid::Document
+        include Mongoid::AutoInc
+
         auto_increment :seq, :seed => 10
       end
       class DocumentD
         include Mongoid::Document
+        include Mongoid::AutoInc
+
         auto_increment :seq
       end
     end
@@ -96,6 +105,7 @@ describe MongoidAutoInc do
     before(:all) do
       class DocumentE
         include Mongoid::Document
+        include Mongoid::AutoInc
 
         field :tenant_id
         auto_increment :seq, scope: :tenant_id
