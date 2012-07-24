@@ -12,6 +12,7 @@ Just add <tt>auto_increment :field</tt> to your Mongoid model where <tt>:field</
 Example:
   class Book
     include Mongoid::Document
+    include Mongoid::AutoInc
 
     field :title
     field :author
